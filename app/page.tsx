@@ -566,7 +566,7 @@ export default function Page() {
               <input
                 type="text"
                 list="parentMenuList"
-                placeholder="Ketik nama parent"
+                placeholder="Enter parent name"
                 value={parentText}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -599,7 +599,7 @@ export default function Page() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="Nama menu"
+                placeholder="Enter menu name"
                 className="bg-gray-secondary w-full rounded-2xl px-4 py-[18px] 2xl:w-1/2"
                 required
               />
