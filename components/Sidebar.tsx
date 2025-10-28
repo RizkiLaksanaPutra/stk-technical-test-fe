@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 
 export default function Sidebar() {
   const [openSystemMenu, setOpenSystemMenu] = useState(true);
@@ -21,7 +20,7 @@ export default function Sidebar() {
     <div>
       <div className="bg-blue-primary flex h-full w-60 flex-col rounded-3xl px-4 py-[30px]">
         <div className="mx-2 mb-10 flex items-center justify-between">
-          <Image src="/logo.svg" alt="logo" width={70} height={29.67} />
+          <img src="/logo.svg" />
           <div className="cursor-pointer">
             <svg
               width="18"
