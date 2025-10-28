@@ -17,9 +17,9 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
   return (
     <html lang="en">
       <body className={`${plusJakartaSans.variable} antialiased`}>
-        <div className="flex h-screen p-6">
+        <div className="sm:flex h-screen p-6">
           <Sidebar />
-          <div className="px-12 flex-1 overflow-y-auto text-[14px] text-blue-gray-800">
+          <div className="sm:px-12 flex-1 overflow-y-auto text-[14px] text-blue-gray-800">
             {children}
           </div>
         </div>

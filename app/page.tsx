@@ -39,6 +39,11 @@ export default function Page() {
   const [parentText, setParentText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Inline rename state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const editingInputRef = useRef<HTMLInputElement | null>(null);
+
   // DnD UX state
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -102,9 +107,8 @@ export default function Page() {
 
   const handleDelete = async (e: React.MouseEvent, node: any) => {
     e.stopPropagation();
-    if (
-      !confirm(
-        `Hapus menu "${node.name}"${node.children?.length ? " beserta seluruh submenunya" : ""}?`,
+    if (!confirm(
+        `Delete menu "${node.name}"${node.children?.length ? " and all the submenu" : ""}?`,
       )
     )
       return;
@@ -115,6 +119,104 @@ export default function Page() {
       if (selected?.id === node.id) resetForm();
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // Inline rename handlers
+  const startInlineEdit = (node: MenuNode) => {
+    setEditingId(node.id);
+    setEditingName(node.name);
+    setTimeout(() => editingInputRef.current?.focus(), 0);
+  };
+
+  const cancelInlineEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const commitInlineEdit = async () => {
+    const id = editingId;
+    const newName = editingName.trim();
+    if (!id) return;
+    if (!newName) {
+      cancelInlineEdit();
+      return;
+    }
+    const current = flatMenus.find((m) => m.id === id);
+    if (current && current.name === newName) {
+      cancelInlineEdit();
+      return;
+    }
+    await editMenu(id, { name: newName });
+    await fetchMenus();
+    if (selected?.id === id) {
+      setForm((f) => ({ ...f, name: newName }));
+    }
+    cancelInlineEdit();
+  };
+
+  const flattenTree = (nodes: MenuNode[]): MenuNode[] => {
+    const out: MenuNode[] = [];
+    const walk = (arr: MenuNode[]) => {
+      for (const n of arr) {
+        out.push(n);
+        if (n.children && n.children.length) {
+          walk(n.children as MenuNode[]);
+        }
+      }
+    };
+    walk(nodes);
+    return out;
+  };
+
+  const addChildAt = async (parent: MenuNode | null) => {
+    const defaultName = "New Menu";
+
+    const beforeIds = new Set(
+      flattenTree(menus as MenuNode[]).map((n) => n.id),
+    );
+
+    const created = (await addMenu({
+      name: defaultName,
+      parentId: parent ? parent.id : null,
+    } as any)) as Partial<MenuNode> | undefined;
+
+    await fetchMenus();
+
+    if (parent && !expandedIds.has(parent.id)) {
+      toggleExpand(parent.id);
+    }
+
+    let newId: string | null =
+      (created && typeof created.id === "string" && created.id) || null;
+
+    if (!newId) {
+      // Fallback kalau store tidak mengembalikan objek created
+      const afterFlat = flattenTree(menus as MenuNode[]);
+      const diff = afterFlat.find(
+        (n) =>
+          !beforeIds.has(n.id) &&
+          (parent ? parent.id : null) === (n.parentId ?? null),
+      );
+      newId = diff?.id ?? null;
+    }
+
+    if (newId) {
+      const allNow = flattenTree(menus as MenuNode[]);
+      const newNode =
+        allNow.find((n) => n.id === newId) ||
+        ({
+          id: newId,
+          name: defaultName,
+          parentId: parent ? parent.id : null,
+          order: 0,
+          depth: (parent?.depth ?? -1) + 1,
+        } as MenuNode);
+
+      handleSelect(newNode);
+      setEditingId(newId);
+      setEditingName(newNode.name ?? defaultName);
+      setTimeout(() => editingInputRef.current?.focus(), 0);
     }
   };
 
@@ -130,7 +232,6 @@ export default function Page() {
       });
     };
     walk(menus as MenuNode[]);
-    // expand deeper:
     const stack = [...ids];
     while (stack.length) {
       const id = stack.pop()!;
@@ -178,6 +279,7 @@ export default function Page() {
 
   // DnD handlers
   const onDragStart = (e: React.DragEvent, id: string) => {
+    if (editingId) return; // sedang rename → jangan drag
     e.dataTransfer.effectAllowed = "move";
     setDragId(id);
   };
@@ -207,19 +309,6 @@ export default function Page() {
     const target = e.currentTarget as HTMLElement;
     const pos = calcDropPos(e, target);
     setHoverPos(pos);
-
-    // auto expand kalau hover di tengah (inside) node tertutup selama 500ms
-    if (pos === "inside" && !expandedIds.has(node.id)) {
-      if (autoExpandTimer.current) clearTimeout(autoExpandTimer.current);
-      autoExpandTimer.current = setTimeout(() => {
-        toggleExpand(node.id);
-      }, 500);
-    } else {
-      if (autoExpandTimer.current) {
-        clearTimeout(autoExpandTimer.current);
-        autoExpandTimer.current = null;
-      }
-    }
   };
 
   const onDropCard = async (
@@ -266,9 +355,10 @@ export default function Page() {
         const showBefore = isHover && hoverPos === "before";
         const showAfter = isHover && hoverPos === "after";
         const showInside = isHover && hoverPos === "inside";
+        const isEditing = editingId === node.id;
 
         return (
-          <li key={node.id} className="relative pb-2">
+          <li key={node.id} className="relative">
             {/* garis drop BEFORE */}
             <div
               className={`absolute -top-1 right-0 left-[-17px] h-3 ${dragId ? "cursor-copy" : ""}`}
@@ -286,8 +376,10 @@ export default function Page() {
 
             {/* kartu node */}
             <div
-              className={`relative flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selected?.id === node.id ? "bg-gray-300" : "hover:bg-gray-200"} ${showInside ? "ring-2 ring-blue-400" : ""}`}
-              draggable
+              className={`group relative flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
+                selected?.id === node.id ? "bg-gray-300" : "hover:bg-gray-200"
+              } ${showInside ? "ring-2 ring-blue-400" : ""}`}
+              draggable={!isEditing}
               onDragStart={(e) => onDragStart(e, node.id)}
               onDragEnd={onDragEnd}
               onDragOver={(e) => onDragOverCard(e, node)}
@@ -313,14 +405,56 @@ export default function Page() {
                 ""
               )}
 
-              <span>{node.name}</span>
+              {isEditing ? (
+                <input
+                  ref={editingInputRef}
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  onBlur={commitInlineEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitInlineEdit();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelInlineEdit();
+                    }
+                  }}
+                  className="min-w-[120px] rounded-md border border-gray-300 bg-white px-2 py-1 text-sm outline-none"
+                />
+              ) : (
+                <span
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    startInlineEdit(node);
+                  }}
+                  title="Double-click to rename"
+                >
+                  {node.name}
+                </span>
+              )}
 
-              {/* tombol delete */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addChildAt(node);
+                }}
+                className={`ml-2 flex size-6 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 ${isEditing ? "" : "pointer-events-none opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"}`}
+                title="Add submenu"
+                aria-label="Add submenu"
+              >
+                +
+              </button>
+
               <button
                 onClick={(e) => handleDelete(e, node)}
-                className="ml-auto cursor-pointer rounded-md bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600 active:bg-red-700 disabled:opacity-60"
+                className={`ml-auto rounded-md bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600 active:bg-red-700 disabled:opacity-60 ${isEditing ? "" : "pointer-events-none opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100"}`}
                 disabled={deletingId === node.id}
                 title="Hapus menu"
+                aria-label="Delete menu"
               >
                 {deletingId === node.id ? "Menghapus..." : "X"}
               </button>
@@ -356,21 +490,20 @@ export default function Page() {
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center gap-2 py-[33px] font-medium">
         <img src="/folder-gray.svg" alt="" />
         <div className="text-blue-gray-300">/</div>
         <div>Menus</div>
       </div>
 
-      <div className="mb-7 flex items-center gap-4">
+      <div className="mb-7 hidden items-center gap-4 sm:flex">
         <div className="bg-blue-primary flex size-[52px] items-center justify-center rounded-full">
           <img src="/squares-white.svg" alt="" />
         </div>
         <div className="text-[32px] font-semibold">Menus</div>
       </div>
 
-      <div className="grid grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         {/* Left: Tree */}
         <div>
           <div className="mb-7">
@@ -384,13 +517,13 @@ export default function Page() {
           <div className="mb-4 grid grid-cols-2 gap-2">
             <button
               onClick={expandAll}
-              className="bg-blue-gray-800 cursor-pointer rounded-4xl py-3 text-white"
+              className="bg-blue-gray-800 rounded-4xl py-3 text-white"
             >
               Expand All
             </button>
             <button
               onClick={collapseAll}
-              className="border-blue-gray-300 cursor-pointer rounded-4xl border py-3"
+              className="border-blue-gray-300 rounded-4xl border py-3"
             >
               Collapse All
             </button>
@@ -406,7 +539,7 @@ export default function Page() {
         </div>
 
         {/* Right: Form */}
-        <div className="mt-[110px] flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:mt-[110px]">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="mb-2 block">Menu ID</label>
@@ -424,7 +557,7 @@ export default function Page() {
                 type="number"
                 value={form.depth}
                 readOnly
-                className="bg-gray-secondary w-full rounded-2xl px-4 py-[18px]"
+                className="bg-gray-secondary w-full rounded-2xl px-4 py-[18px] 2xl:w-1/2"
               />
             </div>
 
@@ -449,7 +582,7 @@ export default function Page() {
                     }));
                   else setForm((f) => ({ ...f, parentId: "", depth: 0 }));
                 }}
-                className="bg-gray-secondary rounded-2xl px-4 py-[18px]"
+                className="bg-gray-secondary w-full rounded-2xl px-4 py-[18px] 2xl:w-1/2"
               />
               <datalist id="parentMenuList">
                 {flatMenus.map((m) => (
@@ -467,27 +600,29 @@ export default function Page() {
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
                 placeholder="Nama menu"
-                className="bg-gray-secondary rounded-2xl px-4 py-[18px]"
+                className="bg-gray-secondary w-full rounded-2xl px-4 py-[18px] 2xl:w-1/2"
                 required
               />
             </div>
 
-            <button
-              type="submit"
-              className="bg-blue-primary w-1/2 cursor-pointer rounded-4xl py-4 text-center text-white"
-            >
-              {form.id ? "Update" : "Save"}
-            </button>
-
-            {form.id && (
+            <div className="mb-5 flex flex-col sm:flex-row 2xl:flex-col gap-3">
               <button
-                type="button"
-                onClick={resetForm}
-                className="w-1/2 cursor-pointer rounded-4xl border py-4"
+                type="submit"
+                className="bg-blue-primary w-full rounded-4xl py-4 text-center text-white lg:w-1/2"
               >
-                Cancel
+                {form.id ? "Update" : "Save"}
               </button>
-            )}
+
+              {form.id && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="w-full rounded-4xl border py-4 lg:w-1/2"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
         </div>
       </div>
