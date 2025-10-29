@@ -64,6 +64,30 @@ Start the Production Server:
 npm run start
 ```
 
+## 🐳 Run with Docker
+### 🧩 Development Mode (with Hot Reload)
+1. Make sure Docker and Docker Compose are installed.
+2. From the project root, run:
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+3. Access the app at http://localhost:3001.
+4. To stop the containers:
+```bash
+docker compose -f docker-compose.dev.yml down
+```
+
+### 🚀 Production Mode (Optimized Multi-Stage Build)
+1. Build and run the production image:
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+2. Access the app at http://localhost:3001
+3. To stop and remove containers:
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
 ## 📚 API Documentation
 
 *https://documenter.getpostman.com/view/44430374/2sB3WmUi9A*
