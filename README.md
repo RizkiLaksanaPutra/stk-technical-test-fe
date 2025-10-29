@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Menu Tree System FE
 
-## Getting Started
+## 🚀 Tech Stack
 
-First, run the development server:
+- **Framework**: Next.js (App Router)
+- **Language**: Typescript
+- **State Management**: Zustand
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Native `fetch`
 
+## 📦 Dependencies
+
+### Production Dependencies
+
+- **zustand** (^5.0.8): Auto-generated type-safe database client.
+
+- **react-dnd** (^4.1.12): Object schema validation library.
+
+### Development Dependencies
+
+- **prettier-plugin-tailwindcss** (^0.7.1): Auto sort tailwind class.
+
+## 🛠️ Installation
+
+### Setup Instructions
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/RizkiLaksanaPutra/stk-technical-test-fe.git
+   cd menu-tree-system-fe
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Environment Configuration**
+
+   Create a `.env` file in the root directory:
+
+   ```env
+   NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+   ```
+
+## 🧑‍💻 How to Run in Development Mode
+
+Run with hot reload:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🧑‍💻 How to Run in Development Mode
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Build the Project:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Start the Production Server:
+```bash
+npm run start
+```
 
-## Learn More
+## 📚 API Documentation
 
-To learn more about Next.js, take a look at the following resources:
+*https://documenter.getpostman.com/view/44430374/2sB3WmUi9A*
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🏗️ Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+menu-tree-system-fe/
+├── app/
+│   ├── globals.css            # Global styles (Tailwind)
+│   ├── layout.tsx             # Root layout
+│   ├── page.tsx               # Main page (Menu Tree)
+│   └── Sidebar.tsx            # Sidebar navigation component
+│
+├── components/
+│   └── Sidebar.tsx            # Sidebar menu (responsive)
+│
+├── lib/
+│   └── api/
+│       └── MenuApi.js         # API service for CRUD menu operations
+│
+├── store/
+│   └── menuStore.ts           # Zustand store for menu state
+│
+├── public/                    # Static assets
+│
+├── .env.example               # Example environment configuration
+├── next.config.ts             # Next.js configuration
+├── tailwind.config.js         # TailwindCSS configuration
+├── tsconfig.json              # TypeScript configuration
+├── postcss.config.mjs         # PostCSS configuration
+└── README.md
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
